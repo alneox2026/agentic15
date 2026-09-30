@@ -105,6 +105,33 @@ Firestore collection names. Set `MIDDLEWARE_STACK_NAME`,
 `MIDDLEWARE_IMAGE_PREFIX`, or `FIRESTORE_NAMESPACE` only when you deliberately
 need a different identity.
 
+Per-collection environment overrides are supported by
+`scripts/cloudshell_deploy_middleware.sh`. Each unset variable keeps its
+namespace-derived default. To deliberately share billing records between
+middleware stacks, export only the collections that should be common; for
+example:
+
+```bash
+export FIRESTORE_CUSTOMER_WALLETS_COLLECTION="customer_wallets_shared"
+export FIRESTORE_WALLET_TRANSACTIONS_COLLECTION="wallet_transactions_shared"
+export FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION="customer_billing_periods_shared"
+export FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION="customer_billing_accounts_shared"
+bash ./scripts/cloudshell_deploy_middleware.sh
+```
+
+The full override set is `FIRESTORE_THREADS_COLLECTION`,
+`FIRESTORE_MESSAGES_SUBCOLLECTION`, `FIRESTORE_IDEMPOTENCY_COLLECTION`,
+`FIRESTORE_BILLING_LEDGER_COLLECTION`,
+`FIRESTORE_CUSTOMER_WALLETS_COLLECTION`,
+`FIRESTORE_BILLING_RESERVATIONS_COLLECTION`,
+`FIRESTORE_WALLET_TRANSACTIONS_COLLECTION`,
+`FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION`,
+`FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION`,
+`FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION`, and
+`FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION`. Do not change
+`FIRESTORE_NAMESPACE` to share only billing records; that would also change
+the defaults for the middleware's other data.
+
 The deploy script does not import existing resources unless
 `IMPORT_EXISTING_RESOURCES=true` is set for a reviewed recovery operation. It
 also refuses a Terraform plan containing deletes or replacements unless

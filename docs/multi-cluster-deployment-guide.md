@@ -27,9 +27,10 @@ that convention.
    30 characters or fewer. The deploy script rejects the inherited
    `ceoagent-…-v3` names for a new stack.
 3. Configure the agents in `config/agents.prod.yaml` and the desired billing
-   catalog. The Cloud Shell deploy script supplies the Firestore collection
-   names automatically, so do not point a new stack at another stack's wallet,
-   reservation, ledger, webhook, or cancellation-request collections.
+   catalog. The Cloud Shell deploy script generates isolated Firestore
+   collection names by default. For an intentionally shared billing design,
+   set only the needed per-collection `FIRESTORE_…_COLLECTION` overrides
+   documented in `README.md`; keep unrelated middleware data isolated.
 4. Commit and push the repository.
 
 ## Cloud Shell workflow

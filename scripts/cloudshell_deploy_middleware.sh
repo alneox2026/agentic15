@@ -14,6 +14,19 @@ cd "${ROOT_DIR}"
 MIDDLEWARE_STACK_NAME="${MIDDLEWARE_STACK_NAME:-$(basename "${ROOT_DIR}")}"
 MIDDLEWARE_IMAGE_PREFIX="${MIDDLEWARE_IMAGE_PREFIX:-${MIDDLEWARE_STACK_NAME}}"
 FIRESTORE_NAMESPACE="${FIRESTORE_NAMESPACE:-${MIDDLEWARE_STACK_NAME//-/_}}"
+# Optional per-collection overrides. Unset values retain the isolated
+# namespace-derived defaults; set only the collections intentionally shared.
+FIRESTORE_THREADS_COLLECTION="${FIRESTORE_THREADS_COLLECTION:-agent_threads_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_MESSAGES_SUBCOLLECTION="${FIRESTORE_MESSAGES_SUBCOLLECTION:-messages_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_IDEMPOTENCY_COLLECTION="${FIRESTORE_IDEMPOTENCY_COLLECTION:-processed_events_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_BILLING_LEDGER_COLLECTION="${FIRESTORE_BILLING_LEDGER_COLLECTION:-agent_billing_ledger_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_CUSTOMER_WALLETS_COLLECTION="${FIRESTORE_CUSTOMER_WALLETS_COLLECTION:-customer_wallets_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_BILLING_RESERVATIONS_COLLECTION="${FIRESTORE_BILLING_RESERVATIONS_COLLECTION:-billing_reservations_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_WALLET_TRANSACTIONS_COLLECTION="${FIRESTORE_WALLET_TRANSACTIONS_COLLECTION:-wallet_transactions_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION="${FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION:-customer_billing_periods_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION="${FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION:-customer_billing_accounts_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION="${FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION:-stripe_webhook_events_${FIRESTORE_NAMESPACE}}"
+FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION="${FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION:-subscription_cancellation_requests_${FIRESTORE_NAMESPACE}}"
 DEPLOYMENT_ENV="${DEPLOYMENT_ENV:-development}"
 BILLING_CATALOG_PATH="${BILLING_CATALOG_PATH:-/app/config/billing.prod.yaml}"
 ALERT_NOTIFICATION_CHANNELS_JSON="${ALERT_NOTIFICATION_CHANNELS_JSON:-[]}"
@@ -89,6 +102,30 @@ if [[ ! "${FIRESTORE_NAMESPACE}" =~ ^[a-z][a-z0-9_]*$ ]]; then
   exit 2
 fi
 
+validate_firestore_collection() {
+  local variable_name="$1"
+  local collection_name="${!variable_name}"
+  if [[ ! "${collection_name}" =~ ^[A-Za-z][A-Za-z0-9_-]{0,1499}$ ]]; then
+    echo "ERROR: ${variable_name} must be a valid simple Firestore collection ID (1-1500 ASCII letters, digits, underscores, or hyphens; first character must be a letter)." >&2
+    exit 2
+  fi
+}
+
+for firestore_collection_variable in \
+  FIRESTORE_THREADS_COLLECTION \
+  FIRESTORE_MESSAGES_SUBCOLLECTION \
+  FIRESTORE_IDEMPOTENCY_COLLECTION \
+  FIRESTORE_BILLING_LEDGER_COLLECTION \
+  FIRESTORE_CUSTOMER_WALLETS_COLLECTION \
+  FIRESTORE_BILLING_RESERVATIONS_COLLECTION \
+  FIRESTORE_WALLET_TRANSACTIONS_COLLECTION \
+  FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION \
+  FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION \
+  FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION \
+  FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION; do
+  validate_firestore_collection "${firestore_collection_variable}"
+done
+
 # Resolve only this stack's images. Never fall back to another stack's image,
 # because a successful deploy with the wrong image is worse than a fast failure.
 if [ -n "${TAG:-}" ] && [ "${TAG}" != "latest" ]; then
@@ -127,6 +164,18 @@ echo " Region              : ${REGION}"
 echo " Stack Name          : ${MIDDLEWARE_STACK_NAME}"
 echo " Image Prefix        : ${MIDDLEWARE_IMAGE_PREFIX}"
 echo " Firestore Namespace : ${FIRESTORE_NAMESPACE}"
+echo " Firestore Collections:"
+echo "   threads                  : ${FIRESTORE_THREADS_COLLECTION}"
+echo "   messages subcollection   : ${FIRESTORE_MESSAGES_SUBCOLLECTION}"
+echo "   idempotency              : ${FIRESTORE_IDEMPOTENCY_COLLECTION}"
+echo "   billing ledger           : ${FIRESTORE_BILLING_LEDGER_COLLECTION}"
+echo "   customer wallets         : ${FIRESTORE_CUSTOMER_WALLETS_COLLECTION}"
+echo "   billing reservations     : ${FIRESTORE_BILLING_RESERVATIONS_COLLECTION}"
+echo "   wallet transactions      : ${FIRESTORE_WALLET_TRANSACTIONS_COLLECTION}"
+echo "   customer billing periods : ${FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION}"
+echo "   billing accounts         : ${FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION}"
+echo "   Stripe webhook events    : ${FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION}"
+echo "   cancellation requests    : ${FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION}"
 echo " State Prefix        : ${TF_STATE_PREFIX}"
 echo " Gateway Image       : ${GATEWAY_IMAGE}"
 echo " Worker Image        : ${WORKER_IMAGE}"
@@ -164,17 +213,17 @@ cat > terraform.auto.tfvars.json <<EOF
   "billing_api_checkout_cancel_url": "https://ceoappdev.flutterflow.app/billing-cancelled",
   "billing_enforcement_enabled": true,
   "billing_reconciliation_enabled": true,
-  "firestore_threads_collection": "agent_threads_${FIRESTORE_NAMESPACE}",
-  "firestore_messages_subcollection": "messages_${FIRESTORE_NAMESPACE}",
-  "firestore_idempotency_collection": "processed_events_${FIRESTORE_NAMESPACE}",
-  "firestore_billing_ledger_collection": "agent_billing_ledger_${FIRESTORE_NAMESPACE}",
-  "firestore_customer_wallets_collection": "customer_wallets_${FIRESTORE_NAMESPACE}",
-  "firestore_billing_reservations_collection": "billing_reservations_${FIRESTORE_NAMESPACE}",
-  "firestore_wallet_transactions_collection": "wallet_transactions_${FIRESTORE_NAMESPACE}",
-  "firestore_customer_billing_periods_collection": "customer_billing_periods_${FIRESTORE_NAMESPACE}",
-  "firestore_customer_billing_accounts_collection": "customer_billing_accounts_${FIRESTORE_NAMESPACE}",
-  "firestore_stripe_webhook_events_collection": "stripe_webhook_events_${FIRESTORE_NAMESPACE}",
-  "firestore_subscription_cancellation_requests_collection": "subscription_cancellation_requests_${FIRESTORE_NAMESPACE}"${EXTRA_TFVARS}
+  "firestore_threads_collection": "${FIRESTORE_THREADS_COLLECTION}",
+  "firestore_messages_subcollection": "${FIRESTORE_MESSAGES_SUBCOLLECTION}",
+  "firestore_idempotency_collection": "${FIRESTORE_IDEMPOTENCY_COLLECTION}",
+  "firestore_billing_ledger_collection": "${FIRESTORE_BILLING_LEDGER_COLLECTION}",
+  "firestore_customer_wallets_collection": "${FIRESTORE_CUSTOMER_WALLETS_COLLECTION}",
+  "firestore_billing_reservations_collection": "${FIRESTORE_BILLING_RESERVATIONS_COLLECTION}",
+  "firestore_wallet_transactions_collection": "${FIRESTORE_WALLET_TRANSACTIONS_COLLECTION}",
+  "firestore_customer_billing_periods_collection": "${FIRESTORE_CUSTOMER_BILLING_PERIODS_COLLECTION}",
+  "firestore_customer_billing_accounts_collection": "${FIRESTORE_CUSTOMER_BILLING_ACCOUNTS_COLLECTION}",
+  "firestore_stripe_webhook_events_collection": "${FIRESTORE_STRIPE_WEBHOOK_EVENTS_COLLECTION}",
+  "firestore_subscription_cancellation_requests_collection": "${FIRESTORE_SUBSCRIPTION_CANCELLATION_REQUESTS_COLLECTION}"${EXTRA_TFVARS}
 }
 EOF
 
